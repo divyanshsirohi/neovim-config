@@ -1,5 +1,6 @@
 local keymap = vim.keymap
 local uv = vim.uv
+local map = vim.keymap.set
 
 -- Save key strokes (now we do not need to press shift to enter command mode).
 keymap.set({ "n", "x" }, ";", ":")
@@ -74,16 +75,16 @@ keymap.set("n", "<leader>ev", "<cmd>tabnew $MYVIMRC <bar> tcd %:h<cr>", {
   desc = "open init.lua",
 })
 
+
 keymap.set("n", "<leader>sv", function()
-  vim.cmd([[
-      update $MYVIMRC
-      source $MYVIMRC
-    ]])
-  vim.notify("Nvim config successfully reloaded!", vim.log.levels.INFO, { title = "nvim-config" })
-end, {
-  silent = true,
-  desc = "reload init.lua",
-})
+  for name,_ in pairs(package.loaded) do
+    if name:match("^mappings") or name:match("^plugins") then
+      package.loaded[name] = nil
+    end
+  end
+  dofile(vim.env.MYVIMRC)
+  vim.notify("Config reloaded safely", vim.log.levels.INFO)
+end, { desc = "reload config (lua-safe)" })
 
 -- Reselect the text that has just been pasted, see also https://stackoverflow.com/a/4317090/6064933.
 keymap.set("n", "<leader>v", "printf('`[%s`]', getregtype()[0])", {
@@ -295,7 +296,7 @@ vim.api.nvim_create_autocmd("TermClose", {
 --prettier
 
 vim.keymap.set("n", "<leader>fp", function()
-  vim.lsp.buf.format()
+  -- vim.lsp.buf.format()
 end, { desc = "Format with Prettier" })
 
 --telescope buffers
@@ -315,3 +316,16 @@ end, { desc = "Substitute line" })
 vim.keymap.set("x", "<leader>rs", function()
   require("substitute").visual()
 end, { desc = "Substitute visual" })
+
+vim.keymap.set("n", "<leader>rn", function()
+  vim.cmd("w")
+  vim.cmd("split | terminal g++ -std=gnu++17 -O2 % && ./a.out < input.txt")
+end, { desc = "Run C++ (CP style)" })
+
+map("n", "<leader>ct", ":CompetiTest receive testcases<CR>", { desc = "Get testcases" })
+
+map("n", "<leader>cr", ":CompetiTest run<CR>", { desc = "Run all testcases" })
+
+map("n", "<leader>cs", ":CompetiTest show testcases<CR>", { desc = "Show testcases" })
+
+map("n", "<leader>cD", ":CompetiTest delete testcases<CR>", { desc = "Delete testcases" })

@@ -1,7 +1,11 @@
+-- Plugin specifications for Neovim using lazy.nvim
+-- This file configures all plugins, their dependencies, and settings
+
 local utils = require("utils")
 local plugin_dir = vim.fs.joinpath(vim.fn.stdpath("data"), "lazy")
 local lazypath = vim.fs.joinpath(plugin_dir, "lazy.nvim")
 
+-- Install lazy.nvim if not already present
 if not vim.uv.fs_stat(lazypath) then
   vim.fn.system {
     "git",
@@ -14,18 +18,26 @@ if not vim.uv.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
--- check if firenvim is active
+-- Helper function to check if firenvim is not active
+-- Used to conditionally disable plugins that don't work well in firenvim
 local firenvim_not_active = function()
   return not vim.g.started_by_firenvim
 end
 
+-- Main plugin specifications table
+-- Contains all plugins with their configurations, dependencies, and loading conditions
 local plugin_specs = {
-  -- auto-completion engine
-  { "hrsh7th/cmp-nvim-lsp", lazy = true },
-  { "hrsh7th/cmp-path", lazy = true },
-  { "hrsh7th/cmp-buffer", lazy = true },
-  { "hrsh7th/cmp-omni", lazy = true },
-  { "hrsh7th/cmp-cmdline", lazy = true },
+  -- ==========================================
+  -- COMPLETION ENGINE
+  -- ==========================================
+  -- Completion sources for nvim-cmp
+  { "hrsh7th/cmp-nvim-lsp", lazy = true },    -- LSP completion source
+  { "hrsh7th/cmp-path", lazy = true },         -- Path completion source
+  { "hrsh7th/cmp-buffer", lazy = true },      -- Buffer completion source
+  { "hrsh7th/cmp-omni", lazy = true },         -- Omni completion source
+  { "hrsh7th/cmp-cmdline", lazy = true },      -- Command line completion source
+  
+  -- Main completion engine
   {
     "hrsh7th/nvim-cmp",
     name = "nvim-cmp",
@@ -34,6 +46,7 @@ local plugin_specs = {
       require("config.nvim-cmp")
     end,
   },
+  -- Alternative completion engine (currently disabled)
   -- {
   --   "saghen/blink.cmp",
   --   -- optional: provides snippets for the snippet source
@@ -45,39 +58,53 @@ local plugin_specs = {
   --   end,
   --   opts_extend = { "sources.default" },
   -- },
+  -- ==========================================
+  -- LSP (LANGUAGE SERVER PROTOCOL)
+  -- ==========================================
+  -- LSP configuration for Neovim
   {
     "neovim/nvim-lspconfig",
     config = function()
       require("config.lsp")
     end,
   },
+  
+  -- Mason: Portable package manager for LSP servers, DAP adapters, etc.
   {
     "williamboman/mason.nvim",
     cmd = "Mason",
     build = ":MasonUpdate",
     config = true,
   },
+  
+  -- Bridge between Mason and lspconfig
   {
     "williamboman/mason-lspconfig.nvim",
     dependencies = { "williamboman/mason.nvim" },
     config = function()
       require("mason-lspconfig").setup {
         ensure_installed = {
-          "lua_ls",
-          "pyright",
-          "yamlls",
-          "bashls",
-          "vimls",
+          "lua_ls",      -- Lua language server
+          "pyright",     -- Python language server
+          "yamlls",      -- YAML language server
+          "bashls",      -- Bash language server
+          "vimls",       -- Vim language server
         },
         automatic_installation = true,
       }
     end,
   },
+  -- ==========================================
+  -- SNIPPETS
+  -- ==========================================
+  -- Snippet engine for Neovim
   {
     "L3MON4D3/LuaSnip",
     build = "make install_jsregexp",
     event = "InsertEnter",
   },
+  
+  -- Collection of snippets for various languages
   {
     "rafamadriz/friendly-snippets",
     event = "VeryLazy",
@@ -725,7 +752,7 @@ local plugin_specs = {
     },
     opts = {
       debug = true, -- Enable debugging
-      -- See Configuration section for rest
+     -- See Configuration section for rest
     },
     cmd = { "CopilotChat" },
   },
@@ -772,10 +799,10 @@ local plugin_specs = {
     opts = {},
   },
   {
-    "nvimtools/none-ls.nvim",
-    dependencies = { "nvim-lua/plenary.nvim" },
+    "stevearc/conform.nvim",
+    event = "BufWritePre",
     config = function()
-      require("null-ls-config")
+      require("config.conform")
     end,
   },
   {
@@ -819,8 +846,97 @@ local plugin_specs = {
       require("nvim-surround").setup()
     end,
   },
-}
+  {
+    "karb94/neoscroll.nvim",
+    opts = {
+      mappings = { "<C-u>", "<C-d>", "<C-b>", "<C-f>", "zt", "zz", "zb" },
+      hide_cursor = true,
+      stop_eof = true,
+      respect_scrolloff = true,
+      cursor_scrolls_alone = true,},
+  },
+  {
+    "xeluxee/competitest.nvim",
+    dependencies = {
+      "MunifTanjim/nui.nvim",
+    },
+    config = function()
+      require("competitest").setup {
+        compile_command = {
+          cpp = {
+            exec = "g++",
+            args = { "-std=gnu++20", "-O2", "-Wall", "$(FNAME)", "-o", "$(FNOEXT)" },
+          },
+        },
+        run_command = {
+          cpp = {
+            exec = "./$(FNOEXT)",
+          },
+        },
+        testcases_directory = "testcases",
+        maximum_time = 2000, -- ms
+      }
+    end,
+  },
+  {
+    "nvim-java/nvim-java",
+    dependencies = {
+      "nvim-dap", -- debugging support
+      "MunifTanjim/nui.nvim", -- UI library
+    },
+    config = function()
+      require("java").setup()
+    end,
+  },
+  {
+    "numToStr/Comment.nvim",
+    opts = {}
+  },
+  {
+    "0x3024/vim",
+    priority = 1000, -- load early, avoid theme fights
+  },
 
+
+    --{
+    --"sphamba/smear-cursor.nvim",
+    --opts = {
+    --}
+  --}, 
+  {
+  "NickvanDyke/opencode.nvim",
+  dependencies = {
+    -- Recommended for `ask()` and `select()`.
+    -- Required for `snacks` provider.
+    ---@module 'snacks' <- Loads `snacks.nvim` types for configuration intellisense.
+    { "folke/snacks.nvim", opts = { input = {}, picker = {}, terminal = {} } },
+  },
+  config = function()
+    ---@type opencode.Opts
+    vim.g.opencode_opts = {
+      -- Your configuration, if any — see `lua/opencode/config.lua`, or "goto definition".
+    }
+
+    -- Required for `opts.events.reload`.
+    vim.o.autoread = true
+
+    -- Recommended/example keymaps.
+    vim.keymap.set({ "n", "x" }, "<C-a>", function() require("opencode").ask("@this: ", { submit = true }) end, { desc = "Ask opencode" })
+    vim.keymap.set({ "n", "x" }, "<C-x>", function() require("opencode").select() end,                          { desc = "Execute opencode action…" })
+    vim.keymap.set({ "n", "t" }, "<C-.>", function() require("opencode").toggle() end,                          { desc = "Toggle opencode" })
+
+    vim.keymap.set({ "n", "x" }, "go",  function() return require("opencode").operator("@this ") end,        { expr = true, desc = "Add range to opencode" })
+    vim.keymap.set("n",          "goo", function() return require("opencode").operator("@this ") .. "_" end, { expr = true, desc = "Add line to opencode" })
+
+    vim.keymap.set("n", "<S-C-u>", function() require("opencode").command("session.half.page.up") end,   { desc = "opencode half page up" })
+    vim.keymap.set("n", "<S-C-d>", function() require("opencode").command("session.half.page.down") end, { desc = "opencode half page down" })
+
+    -- You may want these if you stick with the opinionated "<C-a>" and "<C-x>" above — otherwise consider "<leader>o".
+    vim.keymap.set("n", "+", "<C-a>", { desc = "Increment", noremap = true })
+    vim.keymap.set("n", "-", "<C-x>", { desc = "Decrement", noremap = true })
+  end,
+}
+}
 require("lazy").setup {
   spec = plugin_specs,
   ui = {
